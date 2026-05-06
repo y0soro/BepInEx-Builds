@@ -1,0 +1,44 @@
+From 49777d7a7f5afdff1cf65c1fd2ab0e18d68ca9e1 Mon Sep 17 00:00:00 2001
+From: y0soro <y0soro@protonmail.com>
+Date: Wed, 6 May 2026 07:09:38 +0800
+Subject: [PATCH 3/3] Fix ref NonBlittableStruct IL generation
+
+---
+ Il2CppInterop.Generator/Extensions/ILGeneratorEx.cs     | 4 +++-
+ Il2CppInterop.Generator/Passes/Pass50GenerateMethods.cs | 3 ++-
+ 2 files changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/Il2CppInterop.Generator/Extensions/ILGeneratorEx.cs b/Il2CppInterop.Generator/Extensions/ILGeneratorEx.cs
+index 36a4a16..0f9f12f 100644
+--- a/Il2CppInterop.Generator/Extensions/ILGeneratorEx.cs
++++ b/Il2CppInterop.Generator/Extensions/ILGeneratorEx.cs
+@@ -172,7 +172,9 @@ public static class ILGeneratorEx
+                 body.AddLoadArgument(argumentIndex);
+                 body.Add(OpCodes.Ldind_Ref);
+                 body.Add(OpCodes.Call, imports.IL2CPP_Il2CppObjectBaseToPtrNotNull.Value);
+-                body.Add(OpCodes.Call, imports.IL2CPP_il2cpp_object_unbox.Value);
++
++                if (unboxNonBlittableType)
++                    body.Add(OpCodes.Call, imports.IL2CPP_il2cpp_object_unbox.Value);
+             }
+             else
+             {
+diff --git a/Il2CppInterop.Generator/Passes/Pass50GenerateMethods.cs b/Il2CppInterop.Generator/Passes/Pass50GenerateMethods.cs
+index eff085a..1e89b6c 100644
+--- a/Il2CppInterop.Generator/Passes/Pass50GenerateMethods.cs
++++ b/Il2CppInterop.Generator/Passes/Pass50GenerateMethods.cs
+@@ -120,9 +120,10 @@ public static class Pass50GenerateMethods
+                         }
+ 
+                         var newParam = newMethod.Parameters[i];
++                        // TODO: create a default instance for Il2CppSystem.ValueType wrapped value type
+                         // NOTE(Kas): out parameters of value type are passed directly as a pointer to the il2cpp method
+                         // since we don't need to perform any additional copies
+-                        if (newParam.Definition!.IsOut && !newParam.ParameterType.GetElementType().IsValueType())
++                        if (newParam.Definition!.IsOut && newParam.ParameterType is ByReferenceTypeSignature && !newParam.ParameterType.GetElementType().IsValueType())
+                         {
+                             var elementType = newParam.ParameterType.GetElementType();
+ 
+-- 
+2.54.0
+

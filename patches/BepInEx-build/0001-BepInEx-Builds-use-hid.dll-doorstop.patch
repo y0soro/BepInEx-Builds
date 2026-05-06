@@ -1,0 +1,65 @@
+From 70adf2f437bf29da9b0751c6cacd705332f0cfd8 Mon Sep 17 00:00:00 2001
+From: y0soro <y0soro@protonmail.com>
+Date: Fri, 8 May 2026 09:26:07 +0800
+Subject: [PATCH] BepInEx-Builds: use hid.dll doorstop
+
+---
+ build/TaskIllgamesFixes.cs | 46 ++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 46 insertions(+)
+ create mode 100644 build/TaskIllgamesFixes.cs
+
+diff --git a/build/TaskIllgamesFixes.cs b/build/TaskIllgamesFixes.cs
+new file mode 100644
+index 0000000..2d8420d
+--- /dev/null
++++ b/build/TaskIllgamesFixes.cs
+@@ -0,0 +1,46 @@
++#pragma warning disable CS1591
++// ReSharper disable ClassNeverInstantiated.Global
++using System.Linq;
++using Cake.Common;
++using Cake.Common.IO;
++using Cake.Core.Diagnostics;
++using Cake.Core.IO;
++using Cake.Frosting;
++
++[TaskName("PublishIllgamesFixes")]
++[IsDependentOn(typeof(MakeDistTask))]
++[IsDependentOn(typeof(PushNuGetTask))]
++public sealed class PublishIllgamesFixesTask : FrostingTask<BuildContext>
++{
++    public override void Run(BuildContext ctx)
++    {
++        ctx.Log.Information("Packing BepInEx");
++
++        foreach (var dist in ctx.Distributions)
++        {
++            var targetZipName = $"BepInEx-illgames-fixes-{dist.Target}-{ctx.BuildPackageVersion}.zip";
++            ctx.Log.Information($"Packing {targetZipName}");
++
++            var distDir = ctx.DistributionDirectory.Combine(dist.Target);
++
++            if (dist.Target == "Unity.IL2CPP-win-x64")
++            {
++                var buildDir = ctx.EnvironmentVariable("DOORSTOP_BUILD");
++                var doorstopBuild =
++                    buildDir != null
++                        ? new DirectoryPath(buildDir)
++                        : ctx.RootDirectory.Combine("../UnityDoorstop/build/mingw/x86_64/release");
++
++                ctx.DeleteFile(distDir.CombineWithFilePath("winhttp.dll"));
++
++                ctx.CopyFileToDirectory(doorstopBuild.CombineWithFilePath(".doorstop_version"), distDir);
++                ctx.CopyFile(
++                    doorstopBuild.CombineWithFilePath("libdoorstop.dll"),
++                    distDir.CombineWithFilePath("hid.dll")
++                );
++            }
++
++            ctx.Zip(distDir, ctx.DistributionDirectory.CombineWithFilePath(targetZipName));
++        }
++    }
++}
+-- 
+2.54.0
+

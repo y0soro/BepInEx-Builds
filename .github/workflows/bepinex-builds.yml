@@ -1,0 +1,58 @@
+name: bepinex-builds
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "*"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Set up MinGW
+        uses: egor-tensin/setup-mingw@v3
+        with:
+          platform: x64
+
+      - name: Set up xmake
+        uses: xmake-io/github-action-setup-xmake@v1
+        with:
+          xmake-version: "3.0.8"
+          actions-cache-folder: ".xmake-cache"
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Build
+        id: build
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const script = require('./ci-build.cjs')
+            return await script({ github, context, core, glob, io, exec, getOctokit, require })
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Builds.zip
+          path: builddir/BepInEx/bin/dist/*.zip
+
+      - name: Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v3
+        with:
+          body_path: ${{ github.workspace }}/CHANGELOG.md
+          files: builddir/BepInEx/bin/dist/BepInEx*-Unity.IL2CPP-win-x64-*.zip

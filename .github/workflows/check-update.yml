@@ -1,0 +1,100 @@
+name: check-update
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "0 04 * * *"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check update
+        id: check-update
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.ENV_TOKEN }}
+          result-encoding: string
+          script: |
+            const { readFile, writeFile } = require('fs/promises')
+
+            const stateKey = 'CHECK_UPDATE'
+            const apiRepo = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            }
+
+            let state = {}
+            try {
+              const resVar = await github.rest.actions.getRepoVariable({
+                ...apiRepo,
+                name: stateKey
+              })
+              state = JSON.parse(resVar.data.value)
+            } catch (e) {
+              state = {
+                builderSha: '',
+                upstreamSha: ''
+              }
+              await github.rest.actions.createRepoVariable({
+                ...apiRepo,
+                name: stateKey,
+                value: JSON.stringify(state)
+              })
+            }
+
+            const res = await github.rest.repos.getCommit({
+              owner: 'BepInEx',
+              repo: 'BepInEx',
+              ref: 'master'
+            })
+            const lastSha = res.data.sha;
+
+            if (state.builderSha == context.sha && state.upstreamSha == lastSha) {
+              console.log("no update");
+              return ''
+            }
+
+            state = {
+              builderSha: context.sha,
+              upstreamSha: lastSha
+            }
+
+            await github.rest.actions.updateRepoVariable({
+              ...apiRepo,
+              name: stateKey,
+              value: JSON.stringify(state)
+            })
+            
+            const date = new Date().toISOString().substring(0, 10).replaceAll('-', '')
+
+            return `b${date}-bepinex.${state.upstreamSha.substring(0,7)}+p.${state.builderSha.substring(0,7)}`
+
+      - name: Create tag to trigger release
+        if: ${{ !!steps.check-update.outputs.result }}
+        env:
+          TAG: ${{ steps.check-update.outputs.result }}
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const tagRef = `refs/tags/${process.env.TAG}`
+
+            await github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: tagRef,
+              sha: context.sha
+            })
+
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'bepinex-builds.yml',
+              ref: tagRef
+            })

@@ -1,0 +1,39 @@
+From 2d06bea2876f58ea03eb9f1e595d198f38501bf4 Mon Sep 17 00:00:00 2001
+From: y0soro <y0soro@protonmail.com>
+Date: Wed, 6 May 2026 03:22:39 +0800
+Subject: [PATCH 2/3] Fix Class::GetFieldDefaultValue signature for
+ DigitalCraft 3.1.2
+
+---
+ .../Injection/Hooks/Class_GetFieldDefaultValue_Hook.cs       | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/Il2CppInterop.Runtime/Injection/Hooks/Class_GetFieldDefaultValue_Hook.cs b/Il2CppInterop.Runtime/Injection/Hooks/Class_GetFieldDefaultValue_Hook.cs
+index a0a4258..cf06db2 100644
+--- a/Il2CppInterop.Runtime/Injection/Hooks/Class_GetFieldDefaultValue_Hook.cs
++++ b/Il2CppInterop.Runtime/Injection/Hooks/Class_GetFieldDefaultValue_Hook.cs
+@@ -42,7 +42,6 @@ namespace Il2CppInterop.Runtime.Injection.Hooks
+                 mask = "xxxxxxxxxxxxxx?xxxxxxxxxxxxx",
+                 xref = false
+             },
+-
+             // V Rising - Unity 2022.3.23 (x64)
+             new MemoryUtils.SignatureDefinition
+             {
+@@ -51,10 +50,12 @@ namespace Il2CppInterop.Runtime.Injection.Hooks
+                 xref = false
+             },
+             // GTFO - Unity 2019.4.21 (x64)
++            // DigitalCraft Dolce 3.1.2 - Unity 2022.3.55 (x64)
+             new MemoryUtils.SignatureDefinition
+             {
+                 pattern = "\x48\x89\x5C\x24\x08\x57\x48\x83\xEC\x20\x48\x8B\x41\x10\x48\x8B\xD9\x48\x8B",
+-                mask = "xxxxxxxxxxxxxxxxxxx",
++                // mask the stack allocation length
++                mask = "xxxxxxxxx?xxxxxxxxx",
+                 xref = false
+             },
+             // Idle Slayer - Unity 2021.3.17 (x64)
+-- 
+2.54.0
+
