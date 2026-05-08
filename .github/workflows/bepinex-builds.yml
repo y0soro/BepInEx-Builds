@@ -21,16 +21,16 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Set up MinGW
-        uses: egor-tensin/setup-mingw@v3
+      - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          platform: x64
+          packages: mingw-w64
+          version: 1.0
 
-      - name: Set up xmake
-        uses: xmake-io/github-action-setup-xmake@v1
+      - name: Setup xmake
+        uses: xmake-io/github-action-setup-xmake@v1.2.5
         with:
-          xmake-version: "3.0.8"
-          actions-cache-folder: ".xmake-cache"
+          xmake-version: 3.0.8
+          actions-cache-folder: .xmake-cache
 
       - name: Configure Git
         run: |
@@ -54,5 +54,5 @@ jobs:
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v3
         with:
-          body_path: ${{ github.workspace }}/CHANGELOG.md
+          body_path: CHANGELOG.md
           files: builddir/BepInEx/bin/dist/BepInEx*-Unity.IL2CPP-win-x64-*.zip

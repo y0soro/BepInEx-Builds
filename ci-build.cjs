@@ -74,10 +74,6 @@ module.exports = async function ({
     },
   );
 
-  await exec.exec("xmake", ["f", "-p", "mingw"], {
-    cwd: path.join(buildDir, "UnityDoorstop"),
-  });
-
   await exec.exec(
     "xmake",
     [
@@ -107,6 +103,11 @@ function patchBepInExProj(proj, buildDir) {
     "Il2CppInterop.Runtime",
   ];
 
+  const replacedMap = replaces.reduce((res, name) => {
+    res[name] = false;
+    return res;
+  }, {});
+
   const lines = proj.split("\n");
   const resLines = [];
 
@@ -128,6 +129,8 @@ function patchBepInExProj(proj, buildDir) {
         `Include="${replaceRef}"` +
         line.substring(idx + token.length);
 
+      replacedMap[replace] = true;
+
       break;
     }
 
@@ -137,6 +140,11 @@ function patchBepInExProj(proj, buildDir) {
   const res = resLines.join("\n");
 
   console.log(`Replace csproj:\n${res}\n`);
+
+  for (const [name, replaced] of Object.entries(replacedMap)) {
+    if (replaced) continue;
+    throw new Error(`Package ${name} not replaced!`);
+  }
 
   return res;
 }
