@@ -1,5 +1,9 @@
 ## Fixes
 
+**BepInEx**
+
+- Add all decrypted SVS metadata files, and patch BepInEx to load decrypted metadata matching game assembly version.
+
 **Il2CppInterop**
 
 - Fix DigitalCraft 3.1.2 launching crash.
@@ -15,4 +19,4 @@
 Unpack to game root folder.
 
 > [!NOTE]
-> If you have existing BepInEx installed from HF_Patch, use `BepInEx-SVS-hid.dll-*.zip` for SVS, and `BepInEx-illgames-default-*.zip` for other games. This makes sure you don't have conflicting `winhttp.dll` and `hid.dll` UnityDoorstop loader.
+> Use `BepInEx-SVS-hid.dll-*.zip` for SVS, it has `hid.dll` and all decrypted metadatas included. For other games, use `BepInEx-illgames-default-*.zip` if you installed BepInEx from HF_Patch. This makes sure you don't have conflicting `winhttp.dll` and `hid.dll` UnityDoorstop loader.

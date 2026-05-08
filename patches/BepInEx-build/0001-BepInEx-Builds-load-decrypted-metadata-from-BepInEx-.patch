@@ -1,0 +1,152 @@
+From ec555ce063deda540c2263f440bd983da833c8f3 Mon Sep 17 00:00:00 2001
+From: y0soro <y0soro@protonmail.com>
+Date: Sat, 9 May 2026 05:00:04 +0800
+Subject: [PATCH 1/2] BepInEx-Builds: load decrypted metadata from
+ BepInEx/metadata-index
+
+See https://github.com/y0soro/BepInEx-Builds for index files.
+---
+ .../Il2CppInteropManager.cs                   | 30 ++++++-
+ .../BepInEx.Unity.IL2CPP/MetadataIndex.cs     | 89 +++++++++++++++++++
+ 2 files changed, 118 insertions(+), 1 deletion(-)
+ create mode 100644 Runtimes/Unity/BepInEx.Unity.IL2CPP/MetadataIndex.cs
+
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Il2CppInteropManager.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Il2CppInteropManager.cs
+index 69fa85c..794fc61 100644
+--- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Il2CppInteropManager.cs
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Il2CppInteropManager.cs
+@@ -348,7 +348,35 @@ internal static partial class Il2CppInteropManager
+             cpp2IlLogger.LogError($"[{s}] {message.Trim()}");
+ 
+         var unityVersion = UnityInfo.Version;
+-        Cpp2IlApi.InitializeLibCpp2Il(GameAssemblyPath, metadataPath, unityVersion, false);
++        
++        try
++        {
++            Cpp2IlApi.InitializeLibCpp2Il(GameAssemblyPath, metadataPath, unityVersion, false);
++        }
++        catch (Exception)
++        {
++            var loaded = false;
++            var decryptedMetadataPath = MetadataIndex.FindMetadataPath(GameAssemblyPath);
++
++            if (string.IsNullOrEmpty(decryptedMetadataPath))
++                throw;
++
++            Logger.LogMessage("Failed to load metadata, fallback to metadata from index: " + decryptedMetadataPath);
++
++            try
++            {
++                Cpp2IlApi.InitializeLibCpp2Il(GameAssemblyPath, decryptedMetadataPath, unityVersion, false);
++                loaded = true;
++            }
++            catch (Exception)
++            {
++                loaded = false;
++                Logger.LogError("Failed to load fallback metadata");
++            }
++
++            if (!loaded)
++                throw;
++        }
+ 
+         List<Cpp2IlProcessingLayer> processingLayers = new() { new AttributeInjectorProcessingLayer(), };
+ 
+diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/MetadataIndex.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/MetadataIndex.cs
+new file mode 100644
+index 0000000..5b86e59
+--- /dev/null
++++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/MetadataIndex.cs
+@@ -0,0 +1,89 @@
++using System;
++using System.IO;
++using System.Security.Cryptography;
++using System.Text.Json;
++using BepInEx;
++using BepInEx.Logging;
++
++internal static class MetadataIndex
++{
++    internal class MetadataItem
++    {
++        public string GameAssemblyMd5 { get; set; }
++        public string OriginalMetadataMd5 { get; set; }
++        public string DecryptedMetadataMd5 { get; set; }
++        public string DecryptedMetadataPath { get; set; }
++        public string Author { get; set; }
++    }
++
++    private static readonly ManualLogSource Logger = BepInEx.Logging.Logger.CreateLogSource("MetadataIndex");
++
++    public static string FindMetadataPath(string gameAssemblyPath)
++    {
++        var indexFile = Path.Combine(Paths.BepInExRootPath, "metadata-index/index.json");
++        if (!File.Exists(indexFile))
++            return null;
++
++        var metadataIndex = JsonSerializer.Deserialize<MetadataItem[]>(File.ReadAllBytes(indexFile));
++
++        var gameAssemblyHash = Md5HashFile(gameAssemblyPath);
++        var originalMetaDataHash = Md5HashFile(
++            Path.Combine(Paths.GameDataPath, "il2cpp_data/Metadata/global-metadata.dat")
++        );
++
++        foreach (var item in metadataIndex)
++        {
++            var gaEquals = HashTextEquals(item.GameAssemblyMd5, gameAssemblyHash);
++
++            var mdEquals = HashTextEquals(item.OriginalMetadataMd5, originalMetaDataHash);
++
++            if (!(gaEquals || mdEquals))
++                continue;
++
++            Logger.LogInfo($"Found decrypted metadata {item.DecryptedMetadataPath} by {item.Author}");
++
++            if (!(gaEquals && mdEquals))
++            {
++                Logger.LogWarning("Game data hashes not fully match, possibly broken game install");
++                Logger.LogWarning($"GameAssembly.dll MD5, expected {item.GameAssemblyMd5}, actual {gameAssemblyHash}");
++                Logger.LogWarning(
++                    $"global-metadata MD5, expected {item.OriginalMetadataMd5}, actual {originalMetaDataHash}"
++                );
++            }
++
++            var decryptedMetadataFile = Path.Combine(
++                Paths.BepInExRootPath,
++                "metadata-index",
++                item.DecryptedMetadataPath
++            );
++            if (!File.Exists(decryptedMetadataFile))
++            {
++                Logger.LogWarning($"Decrypted metadata {item.DecryptedMetadataPath} not exists in file system");
++                return null;
++            }
++
++            var decryptedMetadataHash = Md5HashFile(decryptedMetadataFile);
++
++            if (!HashTextEquals(item.DecryptedMetadataMd5, decryptedMetadataHash))
++            {
++                Logger.LogWarning(
++                    $"Decrypted metadata {item.DecryptedMetadataPath} changed, expected {item.DecryptedMetadataMd5}, actual {decryptedMetadataHash}"
++                );
++            }
++
++            return decryptedMetadataFile;
++        }
++
++        return null;
++    }
++
++    private static bool HashTextEquals(string a, string b)
++    {
++        return string.Equals(a, b, StringComparison.InvariantCultureIgnoreCase);
++    }
++
++    private static string Md5HashFile(string path)
++    {
++        return Convert.ToHexString(MD5.HashData(File.ReadAllBytes(path))).ToLowerInvariant();
++    }
++}
+-- 
+2.54.0
+

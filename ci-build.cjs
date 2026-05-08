@@ -11,19 +11,32 @@ module.exports = async function ({
   getOctokit,
   require,
 }) {
+  async function globFiles(pattern) {
+    return await (await glob.create(pattern)).glob();
+  }
+
+  async function execAt(commands, cwd) {
+    return await exec.exec(commands[0], commands.slice(1), {
+      cwd,
+    });
+  }
+
   const buildDir = path.resolve("./builddir");
   await io.mkdirP(buildDir);
 
-  await exec.exec("git", ["clone", "https://github.com/BepInEx/BepInEx.git"], {
-    cwd: buildDir,
-  });
+  await execAt(
+    ["git", "clone", "https://github.com/BepInEx/BepInEx.git"],
+    buildDir,
+  );
 
-  await exec.exec(
-    "git",
-    ["apply", ...(await globFiles("patches/BepInEx-build/*.patch"))],
-    {
-      cwd: path.join(buildDir, "BepInEx"),
-    },
+  await execAt(
+    [
+      "git",
+      "apply",
+      "-3",
+      ...(await globFiles("patches/BepInEx-build/*.patch")),
+    ],
+    path.join(buildDir, "BepInEx"),
   );
 
   const projPath = path.join(
@@ -31,69 +44,53 @@ module.exports = async function ({
     "BepInEx/Runtimes/Unity/BepInEx.Unity.IL2CPP/BepInEx.Unity.IL2CPP.csproj",
   );
 
-  var proj = await fs.readFile(projPath, "utf8");
+  const proj = await fs.readFile(projPath, "utf8");
+  // XXX: resolve the actual commit of Il2CppInterop that the current BepInEx depends
   await fs.writeFile(projPath, patchBepInExProj(proj, buildDir), "utf8");
 
-  await exec.exec(
-    "git",
-    ["clone", "https://github.com/BepInEx/Il2CppInterop.git"],
-    {
-      cwd: buildDir,
-    },
+  await execAt(
+    ["git", "clone", "https://github.com/BepInEx/Il2CppInterop.git"],
+    buildDir,
   );
 
-  await exec.exec(
-    "git",
-    ["clone", "https://github.com/NeighTools/UnityDoorstop.git"],
-    {
-      cwd: buildDir,
-    },
+  await execAt(
+    ["git", "clone", "https://github.com/NeighTools/UnityDoorstop.git"],
+    buildDir,
   );
 
-  // await exec.exec("git", ["checkout", "xxxxxxx"], {
-  //   cwd: path.join(buildDir, "Il2CppInterop"),
-  // });
-
-  async function globFiles(pattern) {
-    return await (await glob.create(pattern)).glob();
-  }
-
-  await exec.exec(
-    "git",
-    ["am", "-3", ...(await globFiles("patches/Il2CppInterop/*.patch"))],
-    {
-      cwd: path.join(buildDir, "Il2CppInterop"),
-    },
+  // seems the Il2CppInterop is about to merge v2, pin v1 here
+  await execAt(
+    ["git", "checkout", "f03c8f4ae507d47ea814f3d11d1ec6b0391c1576"],
+    path.join(buildDir, "Il2CppInterop"),
   );
 
-  await exec.exec(
-    "git",
-    ["am", "-3", ...(await globFiles("patches/UnityDoorstop/*.patch"))],
-    {
-      cwd: path.join(buildDir, "UnityDoorstop"),
-    },
+  await execAt(
+    ["git", "am", "-3", ...(await globFiles("patches/Il2CppInterop/*.patch"))],
+    path.join(buildDir, "Il2CppInterop"),
   );
 
-  await exec.exec(
-    "xmake",
+  await execAt(
+    ["git", "am", "-3", ...(await globFiles("patches/UnityDoorstop/*.patch"))],
+    path.join(buildDir, "UnityDoorstop"),
+  );
+
+  await execAt(
     [
+      "xmake",
       "f",
       "-p",
       "mingw",
       '--cflags="-Wno-error=int-conversion -Wno-error=incompatible-pointer-types"',
     ],
-    {
-      cwd: path.join(buildDir, "UnityDoorstop"),
-    },
+    path.join(buildDir, "UnityDoorstop"),
   );
 
-  await exec.exec("xmake", ["build"], {
-    cwd: path.join(buildDir, "UnityDoorstop"),
-  });
+  await execAt(["xmake", "build"], path.join(buildDir, "UnityDoorstop"));
 
-  await exec.exec("bash", ["build.sh", "--target", "PublishIllgamesFixes"], {
-    cwd: path.join(buildDir, "BepInEx"),
-  });
+  await execAt(
+    ["bash", "build.sh", "--target", "PublishIllgamesFixes"],
+    path.join(buildDir, "BepInEx"),
+  );
 };
 
 function patchBepInExProj(proj, buildDir) {

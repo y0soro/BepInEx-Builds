@@ -1,19 +1,19 @@
-From 2f54b1219f3d71e49577b4328c0464efe146f1cf Mon Sep 17 00:00:00 2001
+From f5d96e6b89acf321ca3a6da9dd3c2c0a693ab6a8 Mon Sep 17 00:00:00 2001
 From: y0soro <y0soro@protonmail.com>
 Date: Fri, 8 May 2026 09:26:07 +0800
-Subject: [PATCH] BepInEx-Builds: use hid.dll doorstop
+Subject: [PATCH 2/2] BepInEx-Builds: produce hid.dll and SVS variants
 
 ---
- build/TaskIllgamesFixes.cs | 65 ++++++++++++++++++++++++++++++++++++++
- 1 file changed, 65 insertions(+)
+ build/TaskIllgamesFixes.cs | 74 ++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 74 insertions(+)
  create mode 100644 build/TaskIllgamesFixes.cs
 
 diff --git a/build/TaskIllgamesFixes.cs b/build/TaskIllgamesFixes.cs
 new file mode 100644
-index 0000000..ec2d7bb
+index 0000000..8c8e25a
 --- /dev/null
 +++ b/build/TaskIllgamesFixes.cs
-@@ -0,0 +1,65 @@
+@@ -0,0 +1,74 @@
 +#pragma warning disable CS1591
 +// ReSharper disable ClassNeverInstantiated.Global
 +using System.Linq;
@@ -41,11 +41,17 @@ index 0000000..ec2d7bb
 +
 +            if (dist.Target == "Unity.IL2CPP-win-x64")
 +            {
-+                var buildDir = ctx.EnvironmentVariable("DOORSTOP_BUILD");
++                var doorstopBuildEnv = ctx.EnvironmentVariable("BEPINEX_BUILDS_DOORSTOP");
 +                var doorstopBuild =
-+                    buildDir != null
-+                        ? new DirectoryPath(buildDir)
++                    doorstopBuildEnv != null
++                        ? new DirectoryPath(doorstopBuildEnv)
 +                        : ctx.RootDirectory.Combine("../UnityDoorstop/build/mingw/x86_64/release");
++
++                var metadataDirEnv = ctx.EnvironmentVariable("BEPINEX_BUILDS_METADATA");
++                var metadataDir =
++                    metadataDirEnv != null
++                        ? new DirectoryPath(metadataDirEnv)
++                        : ctx.RootDirectory.Combine("../../metadata-index");
 +
 +                ctx.Zip(distDir, ctx.DistributionDirectory.CombineWithFilePath(targetZipName));
 +
@@ -65,12 +71,15 @@ index 0000000..ec2d7bb
 +
 +                ctx.Zip(distDir, ctx.DistributionDirectory.CombineWithFilePath(targetZipName));
 +
++                //
++                // produce SVS variant that uses hid.dll and contains decrypted metadata
++                //
++
 +                var svsZipName = $"BepInEx-SVS-hid.dll-{dist.Target}-{ctx.BuildPackageVersion}.zip";
 +
-+                ctx.CopyFile(
-+                    ctx.DistributionDirectory.CombineWithFilePath(targetZipName),
-+                    ctx.DistributionDirectory.CombineWithFilePath(svsZipName)
-+                );
++                ctx.CopyDirectory(metadataDir, distDir.Combine("BepInEx/metadata-index"));
++
++                ctx.Zip(distDir, ctx.DistributionDirectory.CombineWithFilePath(svsZipName));
 +            }
 +            else
 +            {
