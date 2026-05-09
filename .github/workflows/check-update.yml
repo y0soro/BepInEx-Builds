@@ -22,8 +22,6 @@ jobs:
           github-token: ${{ secrets.ENV_TOKEN }}
           result-encoding: string
           script: |
-            const { readFile, writeFile } = require('fs/promises')
-
             const stateKey = 'CHECK_UPDATE'
             const apiRepo = {
               owner: context.repo.owner,
@@ -54,10 +52,10 @@ jobs:
               repo: 'BepInEx',
               ref: 'master'
             })
-            const lastSha = res.data.sha;
+            const lastSha = res.data.sha
 
             if (state.builderSha == context.sha && state.upstreamSha == lastSha) {
-              console.log("no update");
+              console.log("no update")
               return ''
             }
 

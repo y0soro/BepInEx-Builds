@@ -1,19 +1,19 @@
-From f5d96e6b89acf321ca3a6da9dd3c2c0a693ab6a8 Mon Sep 17 00:00:00 2001
+From b8b0164623479fbe0c5b0c494a6d7c8841b5ee32 Mon Sep 17 00:00:00 2001
 From: y0soro <y0soro@protonmail.com>
 Date: Fri, 8 May 2026 09:26:07 +0800
 Subject: [PATCH 2/2] BepInEx-Builds: produce hid.dll and SVS variants
 
 ---
- build/TaskIllgamesFixes.cs | 74 ++++++++++++++++++++++++++++++++++++++
- 1 file changed, 74 insertions(+)
+ build/TaskIllgamesFixes.cs | 79 ++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 79 insertions(+)
  create mode 100644 build/TaskIllgamesFixes.cs
 
 diff --git a/build/TaskIllgamesFixes.cs b/build/TaskIllgamesFixes.cs
 new file mode 100644
-index 0000000..8c8e25a
+index 0000000..59e69d7
 --- /dev/null
 +++ b/build/TaskIllgamesFixes.cs
-@@ -0,0 +1,74 @@
+@@ -0,0 +1,79 @@
 +#pragma warning disable CS1591
 +// ReSharper disable ClassNeverInstantiated.Global
 +using System.Linq;
@@ -25,16 +25,20 @@ index 0000000..8c8e25a
 +
 +[TaskName("PublishIllgamesFixes")]
 +[IsDependentOn(typeof(MakeDistTask))]
-+[IsDependentOn(typeof(PushNuGetTask))]
 +public sealed class PublishIllgamesFixesTask : FrostingTask<BuildContext>
 +{
 +    public override void Run(BuildContext ctx)
 +    {
 +        ctx.Log.Information("Packing BepInEx");
 +
++        var bundleSuffixEnv = ctx.EnvironmentVariable("BEPINEX_BUILDS_VERSION_SUFFIX");
++        var bundleVersion = !string.IsNullOrEmpty(bundleSuffixEnv)
++            ? $"{ctx.VersionPrefix}-{bundleSuffixEnv}"
++            : ctx.BuildPackageVersion;
++
 +        foreach (var dist in ctx.Distributions)
 +        {
-+            var targetZipName = $"BepInEx-illgames-default-{dist.Target}-{ctx.BuildPackageVersion}.zip";
++            var targetZipName = $"BepInEx-illgames-default-{dist.Target}-{bundleVersion}.zip";
 +            ctx.Log.Information($"Packing {targetZipName}");
 +
 +            var distDir = ctx.DistributionDirectory.Combine(dist.Target);
@@ -42,16 +46,14 @@ index 0000000..8c8e25a
 +            if (dist.Target == "Unity.IL2CPP-win-x64")
 +            {
 +                var doorstopBuildEnv = ctx.EnvironmentVariable("BEPINEX_BUILDS_DOORSTOP");
-+                var doorstopBuild =
-+                    doorstopBuildEnv != null
-+                        ? new DirectoryPath(doorstopBuildEnv)
-+                        : ctx.RootDirectory.Combine("../UnityDoorstop/build/mingw/x86_64/release");
++                var doorstopBuild = !string.IsNullOrEmpty(doorstopBuildEnv)
++                    ? new DirectoryPath(doorstopBuildEnv)
++                    : ctx.RootDirectory.Combine("../UnityDoorstop/build/mingw/x86_64/release");
 +
 +                var metadataDirEnv = ctx.EnvironmentVariable("BEPINEX_BUILDS_METADATA");
-+                var metadataDir =
-+                    metadataDirEnv != null
-+                        ? new DirectoryPath(metadataDirEnv)
-+                        : ctx.RootDirectory.Combine("../../metadata-index");
++                var metadataDir = !string.IsNullOrEmpty(metadataDirEnv)
++                    ? new DirectoryPath(metadataDirEnv)
++                    : ctx.RootDirectory.Combine("../../metadata-index");
 +
 +                ctx.Zip(distDir, ctx.DistributionDirectory.CombineWithFilePath(targetZipName));
 +
@@ -59,7 +61,7 @@ index 0000000..8c8e25a
 +                // produce variant that uses hid.dll
 +                //
 +
-+                targetZipName = $"BepInEx-illgames-hid.dll-{dist.Target}-{ctx.BuildPackageVersion}.zip";
++                targetZipName = $"BepInEx-illgames-hid.dll-{dist.Target}-{bundleVersion}.zip";
 +
 +                ctx.DeleteFile(distDir.CombineWithFilePath("winhttp.dll"));
 +
@@ -75,9 +77,12 @@ index 0000000..8c8e25a
 +                // produce SVS variant that uses hid.dll and contains decrypted metadata
 +                //
 +
-+                var svsZipName = $"BepInEx-SVS-hid.dll-{dist.Target}-{ctx.BuildPackageVersion}.zip";
++                var svsZipName = $"BepInEx-SVS-hid.dll-{dist.Target}-{bundleVersion}.zip";
 +
-+                ctx.CopyDirectory(metadataDir, distDir.Combine("BepInEx/metadata-index"));
++                if (ctx.FileSystem.Exist(metadataDir))
++                {
++                    ctx.CopyDirectory(metadataDir, distDir.Combine("BepInEx/metadata-index"));
++                }
 +
 +                ctx.Zip(distDir, ctx.DistributionDirectory.CombineWithFilePath(svsZipName));
 +            }

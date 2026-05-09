@@ -18,5 +18,7 @@
 
 Unpack to game root folder.
 
+**[Troubleshooting](https://github.com/y0soro/BepInEx-Builds/wiki/Troubleshooting)**
+
 > [!NOTE]
 > Use `BepInEx-SVS-hid.dll-*.zip` for SVS, it has `hid.dll` and all decrypted metadatas included. For other games, use `BepInEx-illgames-default-*.zip` if you installed BepInEx from HF_Patch. This makes sure you don't have conflicting `winhttp.dll` and `hid.dll` UnityDoorstop loader.

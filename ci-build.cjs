@@ -15,9 +15,10 @@ module.exports = async function ({
     return await (await glob.create(pattern)).glob();
   }
 
-  async function execAt(commands, cwd) {
+  async function execAt(commands, cwd, options) {
     return await exec.exec(commands[0], commands.slice(1), {
       cwd,
+      ...options,
     });
   }
 
@@ -30,12 +31,7 @@ module.exports = async function ({
   );
 
   await execAt(
-    [
-      "git",
-      "apply",
-      "-3",
-      ...(await globFiles("patches/BepInEx-build/*.patch")),
-    ],
+    ["git", "am", "-3", ...(await globFiles("patches/BepInEx-build/*.patch"))],
     path.join(buildDir, "BepInEx"),
   );
 
@@ -75,13 +71,7 @@ module.exports = async function ({
   );
 
   await execAt(
-    [
-      "xmake",
-      "f",
-      "-p",
-      "mingw",
-      '--cflags="-Wno-error=int-conversion -Wno-error=incompatible-pointer-types"',
-    ],
+    ["xmake", "f", "-p", "mingw", '--cflags="-fpermissive"'],
     path.join(buildDir, "UnityDoorstop"),
   );
 
@@ -90,8 +80,27 @@ module.exports = async function ({
   await execAt(
     ["bash", "build.sh", "--target", "PublishIllgamesFixes"],
     path.join(buildDir, "BepInEx"),
+    {
+      env: {
+        ...process.env,
+        BEPINEX_BUILDS_VERSION_SUFFIX: GetVersionSuffix(context),
+      },
+    },
   );
 };
+
+function GetVersionSuffix(context) {
+  const { ref } = context;
+
+  if (ref.startsWith("refs/tags/")) {
+    const tag = ref.substring(10);
+    const reg = /(\w+)-\w+\.(\w+)\+\w+\.(\w+)/;
+    const matches = tag.match(reg);
+    return `${matches[1]}+bep.${matches[2]}+p.${matches[3]}`;
+  }
+
+  return undefined;
+}
 
 function patchBepInExProj(proj, buildDir) {
   const replaces = [

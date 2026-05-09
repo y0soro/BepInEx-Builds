@@ -23,14 +23,8 @@ jobs:
 
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: mingw-w64
+          packages: mingw-w64 xmake
           version: 1.0
-
-      - name: Setup xmake
-        uses: xmake-io/github-action-setup-xmake@v1.2.5
-        with:
-          xmake-version: 3.0.8
-          actions-cache-folder: .xmake-cache
 
       - name: Configure Git
         run: |
