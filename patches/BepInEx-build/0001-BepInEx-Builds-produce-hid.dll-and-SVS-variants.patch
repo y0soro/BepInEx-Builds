@@ -1,7 +1,7 @@
 From b8b0164623479fbe0c5b0c494a6d7c8841b5ee32 Mon Sep 17 00:00:00 2001
 From: y0soro <y0soro@protonmail.com>
 Date: Fri, 8 May 2026 09:26:07 +0800
-Subject: [PATCH 2/2] BepInEx-Builds: produce hid.dll and SVS variants
+Subject: [PATCH 1/2] BepInEx-Builds: produce hid.dll and SVS variants
 
 ---
  build/TaskIllgamesFixes.cs | 79 ++++++++++++++++++++++++++++++++++++++

@@ -1,63 +1,41 @@
-From ec555ce063deda540c2263f440bd983da833c8f3 Mon Sep 17 00:00:00 2001
+From 9cf5992d2802826895b55778501ba680aa8e45ea Mon Sep 17 00:00:00 2001
 From: y0soro <y0soro@protonmail.com>
-Date: Sat, 9 May 2026 05:00:04 +0800
-Subject: [PATCH 1/2] BepInEx-Builds: load decrypted metadata from
+Date: Sun, 10 May 2026 07:04:16 +0800
+Subject: [PATCH 2/2] BepInEx-Builds: load decrypted metadata from
  BepInEx/metadata-index
 
 See https://github.com/y0soro/BepInEx-Builds for index files.
 ---
- .../Il2CppInteropManager.cs                   | 30 ++++++-
- .../BepInEx.Unity.IL2CPP/MetadataIndex.cs     | 89 +++++++++++++++++++
- 2 files changed, 118 insertions(+), 1 deletion(-)
+ .../Il2CppInteropManager.cs                   |  8 ++
+ .../BepInEx.Unity.IL2CPP/MetadataIndex.cs     | 91 +++++++++++++++++++
+ 2 files changed, 99 insertions(+)
  create mode 100644 Runtimes/Unity/BepInEx.Unity.IL2CPP/MetadataIndex.cs
 
 diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Il2CppInteropManager.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Il2CppInteropManager.cs
-index 69fa85c..794fc61 100644
+index 69fa85c..130cb24 100644
 --- a/Runtimes/Unity/BepInEx.Unity.IL2CPP/Il2CppInteropManager.cs
 +++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/Il2CppInteropManager.cs
-@@ -348,7 +348,35 @@ internal static partial class Il2CppInteropManager
-             cpp2IlLogger.LogError($"[{s}] {message.Trim()}");
+@@ -253,6 +253,14 @@ internal static partial class Il2CppInteropManager
  
-         var unityVersion = UnityInfo.Version;
--        Cpp2IlApi.InitializeLibCpp2Il(GameAssemblyPath, metadataPath, unityVersion, false);
-+        
-+        try
+     private static void GenerateInteropAssemblies()
+     {
++        var decryptedMetadataPath = MetadataIndex.FindMetadataPath(GameAssemblyPath);
++        if (!string.IsNullOrEmpty(decryptedMetadataPath))
 +        {
-+            Cpp2IlApi.InitializeLibCpp2Il(GameAssemblyPath, metadataPath, unityVersion, false);
++            GlobalMetadataPath.ConfigFile.SaveOnConfigSet = false;
++            GlobalMetadataPath.Value = decryptedMetadataPath;
++            GlobalMetadataPath.ConfigFile.SaveOnConfigSet = true;
 +        }
-+        catch (Exception)
-+        {
-+            var loaded = false;
-+            var decryptedMetadataPath = MetadataIndex.FindMetadataPath(GameAssemblyPath);
 +
-+            if (string.IsNullOrEmpty(decryptedMetadataPath))
-+                throw;
-+
-+            Logger.LogMessage("Failed to load metadata, fallback to metadata from index: " + decryptedMetadataPath);
-+
-+            try
-+            {
-+                Cpp2IlApi.InitializeLibCpp2Il(GameAssemblyPath, decryptedMetadataPath, unityVersion, false);
-+                loaded = true;
-+            }
-+            catch (Exception)
-+            {
-+                loaded = false;
-+                Logger.LogError("Failed to load fallback metadata");
-+            }
-+
-+            if (!loaded)
-+                throw;
-+        }
- 
-         List<Cpp2IlProcessingLayer> processingLayers = new() { new AttributeInjectorProcessingLayer(), };
+         if (!CheckIfGenerationRequired())
+             return;
  
 diff --git a/Runtimes/Unity/BepInEx.Unity.IL2CPP/MetadataIndex.cs b/Runtimes/Unity/BepInEx.Unity.IL2CPP/MetadataIndex.cs
 new file mode 100644
-index 0000000..5b86e59
+index 0000000..8184180
 --- /dev/null
 +++ b/Runtimes/Unity/BepInEx.Unity.IL2CPP/MetadataIndex.cs
-@@ -0,0 +1,89 @@
+@@ -0,0 +1,91 @@
 +using System;
 +using System.IO;
 +using System.Security.Cryptography;
@@ -76,7 +54,9 @@ index 0000000..5b86e59
 +        public string Author { get; set; }
 +    }
 +
-+    private static readonly ManualLogSource Logger = BepInEx.Logging.Logger.CreateLogSource("MetadataIndex");
++    private static readonly ManualLogSource Logger = BepInEx.Logging.Logger.CreateLogSource(
++        "BepInEx-Builds: MetadataIndex"
++    );
 +
 +    public static string FindMetadataPath(string gameAssemblyPath)
 +    {

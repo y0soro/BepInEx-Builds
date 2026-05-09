@@ -21,10 +21,17 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: mingw-w64 xmake
-          version: 1.0
+      # adapted from https://github.com/awalsh128/cache-apt-pkgs-action/blob/master/install_and_cache_pkgs.sh
+      - name: Install packages
+        run: |
+          bash -c "$(curl -sL https://raw.githubusercontent.com/ilikenwf/apt-fast/master/quick-install.sh)"
+
+          if [[ -z "$(find -H /var/lib/apt/lists -maxdepth 0 -mmin -5)" ]]; then
+            sudo apt-fast update > /dev/null
+          fi
+
+          sudo DEBIAN_FRONTEND=noninteractive apt-fast --yes install \
+            mingw-w64 xmake
 
       - name: Configure Git
         run: |
