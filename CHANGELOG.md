@@ -7,6 +7,7 @@
 **Il2CppInterop**
 
 - Fix DigitalCraft 3.1.2 launching crash.
+- Revert an upstream patch causing multi-patches hooking crash.
 - Correct interop IL generation for non-reference ValueType parameters marked as `[Out]`.
 - Partially fix hooking to blittable `ref ValueType` argument.
 

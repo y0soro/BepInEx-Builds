@@ -1,7 +1,7 @@
 From 2d06bea2876f58ea03eb9f1e595d198f38501bf4 Mon Sep 17 00:00:00 2001
 From: y0soro <y0soro@protonmail.com>
 Date: Wed, 6 May 2026 03:22:39 +0800
-Subject: [PATCH 2/3] Fix Class::GetFieldDefaultValue signature for
+Subject: [PATCH 2/4] Fix Class::GetFieldDefaultValue signature for
  DigitalCraft 3.1.2
 
 ---

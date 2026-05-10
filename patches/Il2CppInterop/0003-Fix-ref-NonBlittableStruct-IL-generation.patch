@@ -1,7 +1,7 @@
 From 49777d7a7f5afdff1cf65c1fd2ab0e18d68ca9e1 Mon Sep 17 00:00:00 2001
 From: y0soro <y0soro@protonmail.com>
 Date: Wed, 6 May 2026 07:09:38 +0800
-Subject: [PATCH 3/3] Fix ref NonBlittableStruct IL generation
+Subject: [PATCH 3/4] Fix ref NonBlittableStruct IL generation
 
 ---
  Il2CppInterop.Generator/Extensions/ILGeneratorEx.cs     | 4 +++-

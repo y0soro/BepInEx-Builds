@@ -1,0 +1,60 @@
+From 184b9962436d1857e11755e241dd55e8066a5761 Mon Sep 17 00:00:00 2001
+From: y0soro <y0soro@protonmail.com>
+Date: Sun, 10 May 2026 09:51:44 +0800
+Subject: [PATCH 4/4] Revert "Implement Managed Detour in
+ Il2CppDetourMethodPatcher (#237)"
+
+This reverts commit 769f0805bd78950c3f0c925381606d03ed94b045.
+
+The patch breaks the managed method body when CopyOriginal called on
+detoured Original method body, as CopyOriginal expect to operate on
+unmodified Original method body.
+
+This essentially breaks applying more than one Harmony patches on a same
+hooking target.
+---
+ .../Il2CppDetourMethodPatcher.cs                     | 12 +++---------
+ 1 file changed, 3 insertions(+), 9 deletions(-)
+
+diff --git a/Il2CppInterop.HarmonySupport/Il2CppDetourMethodPatcher.cs b/Il2CppInterop.HarmonySupport/Il2CppDetourMethodPatcher.cs
+index 0bd437e..fd5f725 100644
+--- a/Il2CppInterop.HarmonySupport/Il2CppDetourMethodPatcher.cs
++++ b/Il2CppInterop.HarmonySupport/Il2CppDetourMethodPatcher.cs
+@@ -12,11 +12,9 @@ using Il2CppInterop.Runtime.Runtime.VersionSpecific.MethodInfo;
+ using Il2CppInterop.Runtime.Startup;
+ using Microsoft.Extensions.Logging;
+ using MonoMod.Cil;
+-using MonoMod.RuntimeDetour;
+ using MonoMod.Utils;
+-using Detour = MonoMod.RuntimeDetour.Detour;
+-using IDetour = Il2CppInterop.Runtime.Injection.IDetour;
+ using ValueType = Il2CppSystem.ValueType;
++using Void = Il2CppSystem.Void;
+ 
+ namespace Il2CppInterop.HarmonySupport;
+ 
+@@ -59,8 +57,6 @@ internal unsafe class Il2CppDetourMethodPatcher : MethodPatcher
+     };
+ 
+     private static readonly List<object> DelegateCache = new();
+-    private static readonly List<object> DetourCache = new();
+-
+     private INativeMethodInfoStruct modifiedNativeMethodInfo;
+ 
+     private IDetour nativeDetour;
+@@ -151,10 +147,8 @@ internal unsafe class Il2CppDetourMethodPatcher : MethodPatcher
+         nativeDetour.Apply();
+         modifiedNativeMethodInfo.MethodPointer = nativeDetour.OriginalTrampoline;
+ 
+-        var detour = new Detour(Original, managedHookedMethod);
+-        detour.Apply();
+-        DetourCache.Add(detour);
+-
++        // TODO: Add an ILHook for the original unhollowed method to go directly to managedHookedMethod
++        // Right now it goes through three times as much interop conversion as it needs to, when being called from managed side
+         return managedHookedMethod;
+     }
+ 
+-- 
+2.54.0
+
