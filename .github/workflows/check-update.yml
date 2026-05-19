@@ -75,7 +75,8 @@ jobs:
             return `b${date}-bepinex.${state.upstreamSha.substring(0,7)}+p.${state.builderSha.substring(0,7)}`
 
       - name: Create tag to trigger release
-        if: ${{ !!steps.check-update.outputs.result }}
+        # to be rewritten, skip creating tag for now
+        if: ${{ !!steps.check-update.outputs.result && false }}
         env:
           TAG: ${{ steps.check-update.outputs.result }}
         uses: actions/github-script@v9
